@@ -1,0 +1,38 @@
+{
+	"name": "quick-json5",
+	"version": "0.1.0",
+	"description": "Fast JSON5 parser and serializer.",
+	"author": "Rotem Dan",
+	"license": "MIT",
+	"keywords": [
+		"json5",
+		"json"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/rotemdan/quick-json5"
+	},
+	"bugs": {
+		"url": "https://github.com/rotemdan/quick-json5/issues"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"private": true,
+	"main": "./dist/exports/Exports.js",
+	"type": "module",
+	"files": [
+		"dist",
+		"src",
+		"tsconfig.json",
+		"LICENSE.md",
+		"README.md"
+	],
+	"scripts": {
+		"test": "node dist/tests/Test.js"
+	},
+	"dependencies": {},
+	"devDependencies": {
+		"@types/node": "~26.1.1"
+	}
+}
