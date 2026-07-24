@@ -1,9 +1,9 @@
-import { Json5Options, JsonReviverFunction } from '../types/Types.js'
 import { JsonParserError } from '../utilities/JsonParserError.js'
-import { getPositionInfo, hexCharCodeToNumber, positivePowersOf10 } from '../utilities/Utilities.js'
+import { getTextPositionInfo, hexCharCodeToNumber, positivePowersOf10 } from '../utilities/Utilities.js'
+import { type JsonReviverFunction } from './JsonParser.js'
 
-export function parse(jsonString: string, reviver?: JsonReviverFunction, options?: Json5Options) {
-	if (typeof jsonString !== 'string') {
+export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, options?: Json5ParserOptions) {
+	if (typeof json5String !== 'string') {
 		throw new TypeError(`Given JSON5 string argument is not a string.`)
 	}
 
@@ -11,7 +11,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 		throw new TypeError(`Reviver can only be a function.`)
 	}
 
-	const extensionsEnabled = options?.enableExtensions === true
+	const extensionsEnabled = options?.enableJson5Extensions === true
 
 	let readPosition = 0
 
@@ -24,7 +24,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 
 			// Try to quickly parse the string for the case where there are no escape patterns
 			{
-				const remainingString = jsonString.substring(readPosition)
+				const remainingString = json5String.substring(readPosition)
 
 				let match: RegExpMatchArray | null
 
@@ -61,7 +61,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 							// Skip line continuation with \n character
 						} else if (escapeSequenceCharcode === 13) {
 							// Skip line continuation with \r character or \r\n sequence
-							if (jsonString.charCodeAt(readPosition) === 10) {
+							if (json5String.charCodeAt(readPosition) === 10) {
 								readPosition += 1
 							}
 						} else if (escapeSequenceCharcode === 48) { // '0'
@@ -80,37 +80,37 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 					} else if (escapeSequenceCharcode === 116) { // 't'
 						decodedString += '\t'
 					} else if (escapeSequenceCharcode === 117) { // 'u' escape sequence
-						if (readPosition + 4 > jsonString.length) {
-							const positionInfo = getInfoForPosition(jsonString.length - 1)
+						if (readPosition + 4 > json5String.length) {
+							const positionInfo = getInfoForPosition(json5String.length - 1)
 
 							throw new JsonParserError(`Expected 4 hexadecimal characters at ${positionInfo.positionString}. Reached end of input.`, positionInfo)
 						}
 
 						try {
 							const codePoint =
-								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 0)) << 12 |
-								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 1)) << 8 |
-								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 2)) << 4 |
-								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 3))
+								hexCharCodeToNumber(json5String.charCodeAt(readPosition + 0)) << 12 |
+								hexCharCodeToNumber(json5String.charCodeAt(readPosition + 1)) << 8 |
+								hexCharCodeToNumber(json5String.charCodeAt(readPosition + 2)) << 4 |
+								hexCharCodeToNumber(json5String.charCodeAt(readPosition + 3))
 
 							decodedString += String.fromCharCode(codePoint)
 						} catch {
-							const positionInfo = getInfoForPosition(jsonString.length - 1)
+							const positionInfo = getInfoForPosition(json5String.length - 1)
 
 							throw new JsonParserError(`Invalid character in hexadecimal sequence at ${positionInfo.positionString}.`, positionInfo)
 						}
 
 						readPosition += 4
 					} else if (escapeSequenceCharcode === 120) { // 'x' escape sequence
-						if (readPosition + 2 > jsonString.length) {
+						if (readPosition + 2 > json5String.length) {
 							const positionInfo = getInfoForCurrentReadPosition()
 							throw new JsonParserError(`Expected 2 hexadecimal characters at ${positionInfo.positionString}. Reached end of input.`, positionInfo)
 						}
 
 						try {
 							const codePoint =
-								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 0)) << 4 |
-								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 1))
+								hexCharCodeToNumber(json5String.charCodeAt(readPosition + 0)) << 4 |
+								hexCharCodeToNumber(json5String.charCodeAt(readPosition + 1))
 
 							decodedString += String.fromCharCode(codePoint)
 						} catch {
@@ -128,12 +128,12 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 					} else if (escapeSequenceCharcode === 0x2028 || escapeSequenceCharcode === 0x2029) {
 						// Skip line continuation with unicode line and paragraph separator characters
 					} else if (escapeSequenceCharcode === undefined) {
-						throw new JsonParserError(`Unterminated string literal.`, getInfoForPosition(jsonString.length - 1))
+						throw new JsonParserError(`Unterminated string literal.`, getInfoForPosition(json5String.length - 1))
 					} else { // Anything else
 						decodedString += String.fromCharCode(escapeSequenceCharcode)
 					}
 				} else if (charCode === undefined) {
-					throw new JsonParserError(`Unterminated string literal.`, getInfoForPosition(jsonString.length - 1))
+					throw new JsonParserError(`Unterminated string literal.`, getInfoForPosition(json5String.length - 1))
 				} else {
 					if (charCode === 10 || charCode === 13) {
 						const positionInfo = getInfoForPosition(readPosition - 1)
@@ -172,13 +172,13 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 			////////////////////////////////////////////////////////////////////////////////////////////
 			if (charCode === 73) { // 'I' for Infinity
 				if (
-					jsonString.charCodeAt(readPosition + 1) !== 110 || // 'n'
-					jsonString.charCodeAt(readPosition + 2) !== 102 || // 'f'
-					jsonString.charCodeAt(readPosition + 3) !== 105 || // 'i'
-					jsonString.charCodeAt(readPosition + 4) !== 110 || // 'n'
-					jsonString.charCodeAt(readPosition + 5) !== 105 || // 'i'
-					jsonString.charCodeAt(readPosition + 6) !== 116 || // 't'
-					jsonString.charCodeAt(readPosition + 7) !== 121) { // 'y'
+					json5String.charCodeAt(readPosition + 1) !== 110 || // 'n'
+					json5String.charCodeAt(readPosition + 2) !== 102 || // 'f'
+					json5String.charCodeAt(readPosition + 3) !== 105 || // 'i'
+					json5String.charCodeAt(readPosition + 4) !== 110 || // 'n'
+					json5String.charCodeAt(readPosition + 5) !== 105 || // 'i'
+					json5String.charCodeAt(readPosition + 6) !== 116 || // 't'
+					json5String.charCodeAt(readPosition + 7) !== 121) { // 'y'
 
 					const positionInfo = getInfoForCurrentReadPosition()
 					throw new JsonParserError(`Expected 'Infinity' at ${positionInfo.positionString}.`, positionInfo)
@@ -198,8 +198,8 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 			////////////////////////////////////////////////////////////////////////////////////////////
 			if (charCode === 78) { // 'N' for NaN
 				if (
-					jsonString.charCodeAt(readPosition + 1) !== 97 || // 'a'
-					jsonString.charCodeAt(readPosition + 2) !== 78) { // 'N'
+					json5String.charCodeAt(readPosition + 1) !== 97 || // 'a'
+					json5String.charCodeAt(readPosition + 2) !== 78) { // 'N'
 
 					const positionInfo = getInfoForCurrentReadPosition()
 					throw new JsonParserError(`Expected 'NaN' at ${positionInfo.positionString}.`, positionInfo)
@@ -219,7 +219,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 			// Like '0x' (hexadecimal), '0o' (octal) or '0b' (binary)
 			////////////////////////////////////////////////////////////////////////////////////////////
 			if (charCode === 48) { // '0'
-				const nextCharCode = jsonString.charCodeAt(readPosition + 1)
+				const nextCharCode = json5String.charCodeAt(readPosition + 1)
 
 				if (nextCharCode === 120 || nextCharCode === 88) { // 'x' or 'X' for hexadecimal number
 					readPosition += 1
@@ -267,7 +267,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 							throw new JsonParserError(`Hexadecimal literal at ${positionInfo.positionString} contains underscore separators, which are only supported when JSON5 extensions are enabled in options.`, positionInfo)
 						}
 
-						if (jsonString[hexDigitsStartPosition] === '_' || lastUnderscorePosition === readPosition - 1) {
+						if (json5String[hexDigitsStartPosition] === '_' || lastUnderscorePosition === readPosition - 1) {
 							const positionInfo = getInfoForPosition(hexDigitsStartPosition)
 							throw new JsonParserError(`Hexadecimal literal at ${positionInfo.positionString} contains an invalid preceding or trailing underscore.`, positionInfo)
 						}
@@ -316,7 +316,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 						throw new JsonParserError(`Expected at least one octal digit at ${positionInfo.positionString}.`, positionInfo)
 					}
 
-					if (jsonString[octalDigitsStartPosition] === '_' || jsonString[readPosition - 1] === '_') {
+					if (json5String[octalDigitsStartPosition] === '_' || json5String[readPosition - 1] === '_') {
 						const positionInfo = getInfoForPosition(octalDigitsStartPosition)
 						throw new JsonParserError(`Octal literal at ${positionInfo.positionString} contains an invalid preceding or trailing underscore.`, positionInfo)
 					}
@@ -366,7 +366,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 						throw new JsonParserError(`Expected at least one binary digit at ${positionInfo.positionString}.`, positionInfo)
 					}
 
-					if (jsonString[binaryDigitsStartPosition] === '_' || jsonString[readPosition - 1] === '_') {
+					if (json5String[binaryDigitsStartPosition] === '_' || json5String[readPosition - 1] === '_') {
 						const positionInfo = getInfoForPosition(binaryDigitsStartPosition)
 						throw new JsonParserError(`Binary literal at ${positionInfo.positionString} contains an invalid preceding or trailing underscore.`, positionInfo)
 					}
@@ -413,7 +413,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 					// Ensure valid integer part
 					integerPartDigitCount = readPosition - digitsStartPosition
 
-					const firstDigit = jsonString[digitsStartPosition]
+					const firstDigit = json5String[digitsStartPosition]
 
 					if (lastUnderscorePosition >= 0) {
 						if (extensionsEnabled === false) {
@@ -477,7 +477,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 							throw new JsonParserError(`Decimal digits at ${positionInfo.positionString} contain underscore separators, which are only supported when JSON5 extensions are enabled in options.`, positionInfo)
 						}
 
-						if (jsonString[digitsStartPosition] === '_' || lastUnderscorePosition === readPosition - 1) {
+						if (json5String[digitsStartPosition] === '_' || lastUnderscorePosition === readPosition - 1) {
 							const positionInfo = getInfoForPosition(digitsStartPosition)
 							throw new JsonParserError(`Decimal digits in numeric literal at ${positionInfo.positionString} contains an invalid preceding or trailing underscore.`, positionInfo)
 						}
@@ -489,7 +489,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 					}
 
 					// Get substring for BigInt literal
-					let bigIntSubstring = jsonString.substring(numberStringStartPosition, readPosition)
+					let bigIntSubstring = json5String.substring(numberStringStartPosition, readPosition)
 
 					// Remove all underscore separators from substring
 					if (lastUnderscorePosition >= 0) {
@@ -556,7 +556,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 							throw new JsonParserError(`Exponent digits at ${positionInfo.positionString} contain underscore separators, which are only supported when JSON5 extensions are enabled in options.`, positionInfo)
 						}
 
-						if (jsonString[exponentDigitsStartPosition] === '_' || lastUnderscorePosition === readPosition - 1) {
+						if (json5String[exponentDigitsStartPosition] === '_' || lastUnderscorePosition === readPosition - 1) {
 							const positionInfo = getInfoForPosition(exponentDigitsStartPosition)
 							throw new JsonParserError(`Exponent digits in numeric literal at ${positionInfo.positionString} contains an invalid preceding or trailing underscore.`, positionInfo)
 						}
@@ -597,7 +597,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 					}
 				} else {
 					// Get substring for number literal
-					let numberString = jsonString.substring(numberStringStartPosition, readPosition)
+					let numberString = json5String.substring(numberStringStartPosition, readPosition)
 
 					// Remove all underscore separators from substring, if seen
 					if (lastUnderscorePosition >= 0) {
@@ -615,9 +615,9 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 		////////////////////////////////////////////////////////////////////////////////////////////
 		if (initialCharCode === 116) { // 't' for true
 			if (
-				jsonString.charCodeAt(readPosition + 1) !== 114 || // 'r'
-				jsonString.charCodeAt(readPosition + 2) !== 117 || // 'u'
-				jsonString.charCodeAt(readPosition + 3) !== 101) { // 'e'
+				json5String.charCodeAt(readPosition + 1) !== 114 || // 'r'
+				json5String.charCodeAt(readPosition + 2) !== 117 || // 'u'
+				json5String.charCodeAt(readPosition + 3) !== 101) { // 'e'
 
 				const positionInfo = getInfoForCurrentReadPosition()
 				throw new JsonParserError(`Expected 'true' at ${positionInfo.positionString}.`, positionInfo)
@@ -633,10 +633,10 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 		////////////////////////////////////////////////////////////////////////////////////////////
 		if (initialCharCode === 102) { // 'f' for false
 			if (
-				jsonString.charCodeAt(readPosition + 1) !== 97 || // 'a'
-				jsonString.charCodeAt(readPosition + 2) !== 108 || // 'l'
-				jsonString.charCodeAt(readPosition + 3) !== 115 || // 's'
-				jsonString.charCodeAt(readPosition + 4) !== 101) { // 'e'
+				json5String.charCodeAt(readPosition + 1) !== 97 || // 'a'
+				json5String.charCodeAt(readPosition + 2) !== 108 || // 'l'
+				json5String.charCodeAt(readPosition + 3) !== 115 || // 's'
+				json5String.charCodeAt(readPosition + 4) !== 101) { // 'e'
 
 				const positionInfo = getInfoForCurrentReadPosition()
 				throw new JsonParserError(`Expected 'false' at ${positionInfo.positionString}.`, positionInfo)
@@ -652,9 +652,9 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 		////////////////////////////////////////////////////////////////////////////////////////////
 		if (initialCharCode === 110) { // 'n' for null
 			if (
-				jsonString.charCodeAt(readPosition + 1) !== 117 || // 'u'
-				jsonString.charCodeAt(readPosition + 2) !== 108 || // 'l'
-				jsonString.charCodeAt(readPosition + 3) !== 108) { // 'l'
+				json5String.charCodeAt(readPosition + 1) !== 117 || // 'u'
+				json5String.charCodeAt(readPosition + 2) !== 108 || // 'l'
+				json5String.charCodeAt(readPosition + 3) !== 108) { // 'l'
 
 				const positionInfo = getInfoForCurrentReadPosition()
 				throw new JsonParserError(`Expected 'null' at ${positionInfo.positionString}.`, positionInfo)
@@ -749,7 +749,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 					const unquotedKeyRegExp =
 						/^(?:[\p{ID_Start}\$_\u200C\u200D]|\\u[0-9a-fA-F]{4})(?:[\p{ID_Continue}\$_\u200C\u200D]|\\u[0-9a-fA-F]{4})*/u
 
-					const remainingString = jsonString.substring(readPosition)
+					const remainingString = json5String.substring(readPosition)
 
 					const unquotedKeyMatch = remainingString.match(unquotedKeyRegExp)
 
@@ -781,7 +781,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 
 				if (charCode !== 58) { // ':'
 					const positionInfo = getInfoForCurrentReadPosition()
-					throw new JsonParserError(`Invalid character '${jsonString[readPosition]}' at ${positionInfo.positionString}. Expected ':'.`, positionInfo)
+					throw new JsonParserError(`Invalid character '${json5String[readPosition]}' at ${positionInfo.positionString}. Expected ':'.`, positionInfo)
 				}
 
 				readPosition += 1
@@ -823,7 +823,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 
 				{
 					const positionInfo = getInfoForCurrentReadPosition()
-					throw new JsonParserError(`Invalid character '${jsonString[readPosition]}' in object expression at ${positionInfo.positionString}. Expected ',' or '}'.`, positionInfo)
+					throw new JsonParserError(`Invalid character '${json5String[readPosition]}' in object expression at ${positionInfo.positionString}. Expected ',' or '}'.`, positionInfo)
 				}
 			}
 
@@ -837,16 +837,16 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 	}
 
 	function advanceAndReadCharCode() {
-		return jsonString.charCodeAt(++readPosition)
+		return json5String.charCodeAt(++readPosition)
 	}
 
 	function readCharCodeAndAdvance() {
-		return jsonString.charCodeAt(readPosition++)
+		return json5String.charCodeAt(readPosition++)
 	}
 
 	function skipWhitespaceAndComments() {
 		function skipCommentAndFollowingWhitespace() {
-			const commentAndFollowingWhitespace = jsonString.substring(readPosition).match(/^\/\/[^\r\n\u2028\u2029]*\s*|^\/\*[\s\S]*?\*\/\s*/)
+			const commentAndFollowingWhitespace = json5String.substring(readPosition).match(/^\/\/[^\r\n\u2028\u2029]*\s*|^\/\*[\s\S]*?\*\/\s*/)
 
 			if (commentAndFollowingWhitespace === null) {
 				const positionInfo = getInfoForCurrentReadPosition()
@@ -868,8 +868,8 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 			return false
 		}
 
-		while (readPosition < jsonString.length) {
-			const charCode = jsonString.charCodeAt(readPosition)
+		while (readPosition < json5String.length) {
+			const charCode = json5String.charCodeAt(readPosition)
 
 			if (charCode > 0x000D && charCode < 0x1680) {
 				if (charCode === 0x0020 || charCode === 0x00A0) {
@@ -899,7 +899,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 		const nextCharCode = skipWhitespaceAndComments()
 
 		if (nextCharCode === undefined) {
-			throw new JsonParserError(`Unexpected termination of JSON5 input.`, getInfoForPosition(jsonString.length - 1))
+			throw new JsonParserError(`Unexpected termination of JSON5 input.`, getInfoForPosition(json5String.length - 1))
 		}
 
 		return nextCharCode
@@ -910,7 +910,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 	}
 
 	function getInfoForPosition(position: number) {
-		return getPositionInfo(jsonString, position)
+		return getTextPositionInfo(json5String, position)
 	}
 
 	function applyReviver(key: string, value: any, valueStartPosition: number, thisArg?: any) {
@@ -921,7 +921,7 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 		let context: string | undefined
 
 		if (typeof value !== 'object' || value === null) {
-			context = jsonString.substring(valueStartPosition, readPosition)
+			context = json5String.substring(valueStartPosition, readPosition)
 		}
 
 		let result: any
@@ -956,4 +956,8 @@ export function parse(jsonString: string, reviver?: JsonReviverFunction, options
 
 		return result
 	}
+}
+
+export interface Json5ParserOptions {
+	enableJson5Extensions?: boolean
 }

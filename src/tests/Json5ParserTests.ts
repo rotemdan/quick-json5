@@ -1,4 +1,4 @@
-import { parse } from '../json5/Json5Parser.js'
+import { parseJSON5 } from '../parser/Json5Parser.js'
 import { deepEquals } from '../utilities/ObjectUtilities.js'
 
 const log = console.log
@@ -8,7 +8,7 @@ export function testJson5Parser() {
 		let parsedObj: unknown
 
 		try {
-			parsedObj = parse(source, undefined, { enableExtensions: true })
+			parsedObj = parseJSON5(source, undefined, { enableJson5Extensions: true })
 		} catch (e: any) {
 			log(`Error when parsing:`)
 			log(source)
@@ -32,7 +32,7 @@ export function testJson5ParserInvalidInputs() {
 		let parsedObj: any
 
 		try {
-			parsedObj = parse(invalidInput)
+			parsedObj = parseJSON5(invalidInput)
 		} catch (e: any) {
 			log(`Error when parsing:`)
 			log(invalidInput)

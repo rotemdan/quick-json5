@@ -1,4 +1,4 @@
-import { parseJSON } from '../json/JsonParser.js'
+import { parseJSON } from '../parser/JsonParser.js'
 import { deepEquals } from '../utilities/ObjectUtilities.js'
 
 const log = console.log

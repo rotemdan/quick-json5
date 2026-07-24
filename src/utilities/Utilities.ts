@@ -1,10 +1,10 @@
 // Assumes character code is in uint16 range: 0 <= charCode <= 65535
-export function charCodeTo4HexDigits(charCode: number): string {
-	function digitToCharCode(digit: number) {
+export function charCodeTo4HexDigitsLowercase(charCode: number): string {
+	function digitToCharCode(digit: number): number {
 		if (digit < 10) {
 			return 48 + digit // 48 is '0'
 		} else {
-			return 65 + digit - 10 // 65 is 'A'
+			return 97 + digit - 10 // 97 is 'a'
 		}
 	}
 
@@ -89,7 +89,7 @@ export function offsetToLineAndColumnNumber(text: string, charOffset: number): L
 	return { lineNumber, columnNumber }
 }
 
-export function getPositionInfo(text: string, charOffset: number): PositionInfo {
+export function getTextPositionInfo(text: string, charOffset: number): PositionInfo {
 	charOffset = clamp(charOffset, 0, text.length - 1)
 
 	const {  lineNumber, columnNumber } = offsetToLineAndColumnNumber(text, charOffset)

@@ -1,6 +1,5 @@
-import { JsonReviverFunction } from '../types/Types.js'
 import { JsonParserError } from '../utilities/JsonParserError.js'
-import { getPositionInfo, hexCharCodeToNumber, positivePowersOf10 } from '../utilities/Utilities.js'
+import { getTextPositionInfo, hexCharCodeToNumber, positivePowersOf10 } from '../utilities/Utilities.js'
 
 export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 	if (typeof jsonString !== 'string') {
@@ -442,7 +441,7 @@ export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 	}
 
 	function getInfoForPosition(position: number) {
-		return getPositionInfo(jsonString, position)
+		return getTextPositionInfo(jsonString, position)
 	}
 
 	function applyReviver(key: string, value: any, valueStartPosition: number, thisArg?: any) {
@@ -489,3 +488,5 @@ export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 		return result
 	}
 }
+
+export type JsonReviverFunction = (key: string, value: any, context?: string) => any
