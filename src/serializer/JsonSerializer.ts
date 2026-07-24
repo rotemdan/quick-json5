@@ -1,7 +1,7 @@
 import { charCodeTo4HexDigitsLowercase, clamp } from '../utilities/Utilities.js'
 
 // Serializes a JavaScript value into a JSON5 string.
-export function stringifyJSON5(rootObj: any, replacer?: JsonReplacerType, indentSpace: string | number = 0, options?: Json5SerializerOptions) {
+export function stringifyJSON5(rootObj: any, replacer?: JsonReplacerType, indentSpace: string | number = 0, options?: Json5SerializerOptions): string {
 	return stringifyJSON(rootObj, replacer, indentSpace, { enableJson5: true, ...options })
 }
 
@@ -15,7 +15,7 @@ export function stringifyJSON5(rootObj: any, replacer?: JsonReplacerType, indent
 // * Circular reference detection
 // * Boxed primitive unwrapping
 // * Proper handling of `undefined`, functions, and symbols (context-dependent)
-export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentSpace: string | number = 0, options?: JsonSerializerOptions) {
+export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentSpace: string | number = 0, options?: JsonSerializerOptions): string {
 	const json5Enabled = options?.enableJson5 === true
 	const json5ExtensionsEnabled = json5Enabled && options?.enableJson5Extensions === true
 
@@ -373,7 +373,7 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 	// there is nothing to serialize — return the JS value `undefined`.
 	// (This matches JSON.stringify(() => {}) → undefined.)
 	if (rootObj === undefined || typeof rootObj === 'function' || typeof rootObj === 'symbol') {
-		return undefined
+		return undefined as any
 	}
 
 	// Serialize the preprocessed root value.
