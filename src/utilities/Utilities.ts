@@ -1,4 +1,5 @@
-export function charCodeToHex(charcode: number): string {
+// Assumes character code is in uint16 range: 0 <= charCode <= 65535
+export function charCodeTo4HexDigits(charCode: number): string {
 	function digitToCharCode(digit: number) {
 		if (digit < 10) {
 			return 48 + digit // 48 is '0'
@@ -8,16 +9,16 @@ export function charCodeToHex(charcode: number): string {
 	}
 
 	// Digit 1 (Least significant)
-	const charCode1 = digitToCharCode(charcode & 0xF)
+	const charCode1 = digitToCharCode(charCode & 0xF)
 
 	// Digit 2
-	const charCode2 = digitToCharCode((charcode >>> 4) & 0xF)
+	const charCode2 = digitToCharCode((charCode >>> 4) & 0xF)
 
 	// Digit 3
-	const charCode3 = digitToCharCode((charcode >>> 8) & 0xF)
+	const charCode3 = digitToCharCode((charCode >>> 8) & 0xF)
 
 	// Digit 4 (Most significant)
-	const charCode4 = digitToCharCode((charcode >>> 12) & 0xF)
+	const charCode4 = digitToCharCode((charCode >>> 12) & 0xF)
 
 	return String.fromCharCode(charCode4, charCode3, charCode2, charCode1)
 }
@@ -89,7 +90,7 @@ export function offsetToLineAndColumnNumber(text: string, charOffset: number): L
 }
 
 export function getPositionInfo(text: string, charOffset: number): PositionInfo {
-	charOffset = clip(charOffset, 0, text.length - 1)
+	charOffset = clamp(charOffset, 0, text.length - 1)
 
 	const {  lineNumber, columnNumber } = offsetToLineAndColumnNumber(text, charOffset)
 
@@ -103,16 +104,8 @@ export function getPositionInfo(text: string, charOffset: number): PositionInfo 
 	}
 }
 
-export function clip(num: number, min: number, max: number) {
-	if (num < min) {
-		return min
-	}
-
-	if (num > max) {
-		return max
-	}
-
-	return num
+export function clamp(value: number, min: number, max: number): number {
+	return Math.min(Math.max(value, min), max);
 }
 
 export interface LineAndColumnNumber {

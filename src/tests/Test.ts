@@ -4,10 +4,10 @@ import { testJson5Parser, testJson5ParserInvalidInputs } from './Json5ParserTest
 import { testJsonEncoder } from './JsonEncoderTests.js'
 import { testJsonParser, testJsonParserInvalidInputs } from './JsonParserTests.js'
 
-//testJsonEncoder()
+testJsonEncoder()
 testJsonParser()
 //testJsonParserInvalidInputs()
 
-//testJson5Encoder()
+testJson5Encoder()
 testJson5Parser()
 //testJson5ParserInvalidInputs()

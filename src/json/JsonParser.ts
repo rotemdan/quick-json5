@@ -1,5 +1,5 @@
 import { JsonReviverFunction } from '../types/Types.js'
-import { JsonParserError } from '../utilities/JsonParseError.js'
+import { JsonParserError } from '../utilities/JsonParserError.js'
 import { getPositionInfo, hexCharCodeToNumber, positivePowersOf10 } from '../utilities/Utilities.js'
 
 export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
