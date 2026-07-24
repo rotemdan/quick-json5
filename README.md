@@ -18,15 +18,7 @@ Parser also supports additional numeric literal syntax added in later versions o
 * `BigInt` numeric literals (`123412341234n`). Introduced in ES2020
 * Underscore separators in numeric literals (`123_456_789`, `123.456_789`, `0b0110_1101`). Introduced in ES2021
 
-Enabling these extensions requires the `enableExtensions` option to be set to `true` in the `options` argument for `parse` and `stringify`.
-
-## Extra: Plain JSON parser and serializer
-
-As an extra, also includes an optimized pure JavaScript JSON parser and serializer, with performance approaching to the native `JSON.parse` and `JSON.stringify`.
-
-The alternative parser can be useful when detailed metadata is required when handling errors. For example when implementing a syntax checker that needs to highlight the location of errors in the JSON file.
-
-You can also use the source code as a starting point for implementing various custom JSON extensions, like adding support for comments (AKA "JSON with comments").
+Enabling these extensions requires the `enableJson5Extensions` option to be set to `true` in the `options` argument for the `parseJSON5` and `stringifyJSON5` methods.
 
 ## Usage examples
 
@@ -37,28 +29,28 @@ npm install quick-json5
 
 JSON5 serializer and parser:
 ```ts
-import * as JSON5 from 'quick-json5'
+import { stringifyJSON5, parseJSON5 } from 'quick-json5'
 
-const json5Str = JSON5.stringify({ 'hello': 123 })
-const parsedObject = JSON5.parse(json5Str)
+const json5Str = stringifyJSON5({ 'hello': 123 })
+const parsedObject = parseJSON5(json5Str)
 ```
 
 JSON5 serializer and parser with extensions enabled:
 ```ts
-import * as JSON5 from 'quick-json5'
+import { stringifyJSON5, parseJSON5 } from 'quick-json5'
 
-const options = { enableExtensions: true }
+const options ={ enableJson5Extensions: true }
 
-const json5Str = JSON5.stringify({ 'hello': 12356123456123456n }, undefined, 4, options)
-const parsedObject = JSON5.parse(json5Str, undefined, options)
+const json5Str = stringifyJSON5({ 'hello': 12356123456123456n }, undefined, 4, options)
+const parsedObject = parseJSON5(json5Str, undefined, options)
 ```
 
 Plain JSON serializer and parser:
 ```ts
-import * as JSON5 from 'quick-json5'
+import { stringifyJSON, parseJSON } from 'quick-json5'
 
-const jsonStr = JSON5.stringifyJSON({ 'hello': 123 })
-const parsedObject = JSON5.parseJSON(jsonStr)
+const jsonStr = stringifyJSON({ 'hello': 123 })
+const parsedObject = parseJSON(jsonStr)
 ```
 
 ## License
