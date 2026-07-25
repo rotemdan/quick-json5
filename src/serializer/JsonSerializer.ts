@@ -105,9 +105,9 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 	function getIndentString() {
 		if (baseIndentString.length === 0) {
 			return ''
+		} else {
+			return `\n${baseIndentString.repeat(currentIndentLevel)}`
 		}
-
-		return `\n${baseIndentString.repeat(currentIndentLevel)}`
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -115,7 +115,7 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 	//
 	// Handles toJSON lookup and replacer transformations
 	//
-	// Passing `undefined` container treats `value` as the root and wraps int a temporary object
+	// Passing `undefined` container treats `value` as the root and wraps in a temporary object
 	// in order to pass it to the replacer
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	function applyTransformsIfNeeded(container: any, key: string | number, value: any): any {
@@ -186,7 +186,7 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 		// Strings
 		if (typeof obj === 'string') {
 			// Strings must be quoted and have control characters / lone surrogates escaped.
-			return `"${escapeStringIfNeeded(obj, json5Enabled)}"`
+			return `"${escapeString(obj, json5Enabled)}"`
 		}
 
 		// BigInts
@@ -259,23 +259,23 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 				// Increase indent level
 				currentIndentLevel += 1
 
-				// Serialize.
+				// Serialize the element.
 				// undefined / functions / symbols in arrays become `null` (they can't be omitted
 				// because arrays are positional — skipping would shift indices).
-				let encodedElement: string
+				let serializedElement: string
 
 				if (element === undefined || typeof element === 'function' || typeof element === 'symbol') {
-					encodedElement = 'null'
+					serializedElement = 'null'
 				} else {
-					encodedElement = serialize(element)
+					serializedElement = serialize(element)
 				}
 
 				// Initialize strings
-				const separatingComma = isFirstElement ? '' : ','
+				const possibleSeparatingComma = isFirstElement ? '' : ','
 				const indentString = getIndentString()
 
 				// Append element to output string
-				outputString += `${separatingComma}${indentString}${encodedElement}`
+				outputString += `${possibleSeparatingComma}${indentString}${serializedElement}`
 
 				// Decrease indent level
 				currentIndentLevel -= 1
@@ -319,27 +319,29 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 				currentIndentLevel += 1
 
 				// Initialize strings
-				const separatingComma = isFirstEntry === true ? '' : ','
+				const possibleSeparatingComma = isFirstEntry === true ? '' : ','
 				const indentString = getIndentString()
 
 				let possiblyQuotedKey: string
 
-				const json5UnquotedKeyRegExp = /^[\p{ID_Start}\$_\u200C\u200D](?:[\p{ID_Continue}\$_\u200C\u200D])*$/u
+				const json5UnquotedKeyRegExp =
+					/^[\p{ID_Start}\$_\u200C\u200D](?:[\p{ID_Continue}\$_\u200C\u200D])*$/u
 
 				if (json5Enabled && json5UnquotedKeyRegExp.test(key)) {
 					possiblyQuotedKey = key
 				} else {
-					possiblyQuotedKey = `"${escapeStringIfNeeded(key, json5Enabled)}"`
+					possiblyQuotedKey = `"${escapeString(key, json5Enabled)}"`
 				}
 
 				// Add a space after the colon only when indentation is active
-				const spaceAfterColons = baseIndentString.length > 0 ? ' ' : ''
+				const possibleSpaceAfterColons = baseIndentString.length > 0 ? ' ' : ''
 
 				// Serialize the value
-				const encodedValue = serialize(value)
+				const serializedValue = serialize(value)
 
 				// Append property to output string
-				outputString += `${separatingComma}${indentString}${possiblyQuotedKey}:${spaceAfterColons}${encodedValue}`
+				outputString +=
+					`${possibleSeparatingComma}${indentString}${possiblyQuotedKey}:${possibleSpaceAfterColons}${serializedValue}`
 
 				// Decrease indent level
 				currentIndentLevel -= 1
@@ -380,97 +382,49 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 	return serialize(rootObj)
 }
 
-// Returns the input string as-is if it doesn't contain any characters that need escaping,
-// otherwise delegates to escapeString().
-//
-// This is an optimization: most strings are safe
-// and can skip the per-character loop.
-function escapeStringIfNeeded(str: string, json5Enabled: boolean): string {
-	// The regex matches:
-	//
-	// * `"` (U+0022) — must be escaped so it doesn't terminate the JSON string
-	// * `\` (U+005C) — must be escaped so it doesn't start an escape sequence
-	// * `\x00-\x1F` (C0 control characters) — must be escaped per JSON spec
-	// * `\uD800-\uDFFF` (lone surrogates) — must be escaped so the output is valid UTF-16
-	const escapedCharsRegexp = /["\\\x00-\x1F\uD800-\uDFFF]/
-
-	if (!escapedCharsRegexp.test(str)) {
-		return str
-	} else {
-		return escapeString(str, json5Enabled)
-	}
-}
-
-// Escapes a string for inclusion in a JSON string literal.
-//
-// Per the JSON spec and ECMAScript §24.5.2 (JSON.stringify), the following
-// characters are escaped:
-//   * `"` → `\"`
-//   * `\` → `\\`
-//   * Control characters (code points < 0x20) → `\n`, `\r`, `\t`, `\f`, `\b`, or `\uXXXX`
-//   * Lone surrogates (0xD800–0xDFFF) → `\uXXXX` (ES2019+ requirement)
-//
-// Valid surrogate pairs (high + low) are passed through unescaped — they form
-// a single Unicode code point and are valid in JSON.
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Escapes a string for inclusion in a JSON/JSON5 string literal.
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 function escapeString(str: string, json5Enabled: boolean): string {
-	let escapedStr = ''
-
-	for (let charIndex = 0; charIndex < str.length; charIndex++) {
-		const charCode = str.charCodeAt(charIndex)
-
-		if (charCode >= 0xD800 && charCode <= 0xDBFF) {
-			// High surrogate (0xD800–0xDBFF)
-			// If followed by a low surrogate (0xDC00–0xDFFF), pass the surrogate pair through unescaped.
-			if (charIndex + 1 < str.length) {
-				const nextCharCode = str.charCodeAt(charIndex + 1)
-
-				if (nextCharCode >= 0xDC00 && nextCharCode <= 0xDFFF) {
-					escapedStr += str[charIndex] + str[charIndex + 1]
-					charIndex++ // Skip low surrogate on next iteration
-
-					continue
-				}
-			}
-
-			// Unpaired high surrogate -> escape as \uXXXX
-			escapedStr += `\\u${charCodeTo4HexDigitsLowercase(charCode)}`
-		} else if (charCode >= 0xDC00 && charCode <= 0xDFFF) {
-			// Unpaired low surrogate (0xDC00–0xDFFF)
-			escapedStr += `\\u${charCodeTo4HexDigitsLowercase(charCode)}`
-		} else if (charCode >= 32) {
-			// Printable ASCII and higher
-			// Only two printable characters need escaping in JSON strings.
-			if (charCode === 34) { // '"'
-				escapedStr += '\\"'
-			} else if (charCode === 92) { // '\\'
-				escapedStr += '\\\\'
-			} else {
-				escapedStr += String.fromCharCode(charCode)
-			}
-		} else {
-			// Control characters (< 0x20)
-			// Common ones get short escape sequences; everything else uses \uXXXX.
-			if (charCode === 10) { // '\n'
-				escapedStr += '\\n'
-			} else if (charCode === 13) { // '\r'
-				escapedStr += '\\r'
-			} else if (charCode === 9) { // '\t'
-				escapedStr += '\\t'
-			} else if (charCode === 12) { // '\f'
-				escapedStr += '\\f'
-			} else if (charCode === 8) { // '\b'
-				escapedStr += '\\b'
-			} else if (json5Enabled && charCode === 11) { // '\v'
-				escapedStr += '\\v'
-			} else {
-				escapedStr += `\\u${charCodeTo4HexDigitsLowercase(charCode)}`
-			}
+	// Resolves the proper escape sequence for a single matched character code.
+	function getEscapeCode(charCode: number): string {
+		switch (charCode) {
+			case 34: // '"'
+				return '\\"'
+			case 92: // '\\'
+				return '\\\\'
+			case 10: // '\n'
+				return '\\n'
+			case 13: // '\r'
+				return '\\r'
+			case 9:  // '\t'
+				return '\\t'
+			case 8:  // '\b'
+				return '\\b'
+			case 12: // '\f'
+				return '\\f'
+			case 11: // '\v'
+				return json5Enabled ? '\\v' : '\\u000b'
+			default:
+				// Unpaired surrogates and remaining control characters (< 0x20)
+				return `\\u${charCodeTo4HexDigitsLowercase(charCode)}`
 		}
 	}
 
-	return escapedStr
+	// Matches only characters that require escaping (including unpaired surrogates)
+	const escapedCharPatternsRegExp =
+		/["\\\x00-\x1F]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+
+	// Apply replace pattern
+	return str.replace(
+		escapedCharPatternsRegExp,
+		(match) => getEscapeCode(match.charCodeAt(0))
+	)
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Type definitions.
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 export interface JsonSerializerOptions {
 	enableJson5?: boolean
 	enableJson5Extensions?: boolean
