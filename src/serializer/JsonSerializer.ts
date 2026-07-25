@@ -119,6 +119,9 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 	// in order to pass it to the replacer
 	////////////////////////////////////////////////////////////////////////////////////////////////////////
 	function applyTransformsIfNeeded(container: any, key: string | number, value: any): any {
+		// The encoding pipeline per element (from the spec) is:
+		//   raw value → toJSON(key) → replacer(key, value) → serialize()
+
 		// Save reference to original value before toJSON mutates it
 		const originalValue = value
 
@@ -150,12 +153,6 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 	// Serializer function
 	//
 	// Core recursive serializer. Serializes an arbitrary value into a JSON string fragment.
-	//
-	// The encoding pipeline per element (from the spec) is:
-	//   raw value → toJSON(key) → replacer(key, value) → serialize()
-	//
-	// This function handles the final "serialize" step plus some early-exit checks.
-	// toJSON and replacer are applied at each call site *before* this is invoked.
 	//////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	// Tracks objects currently being serialized so we can detect circular references.
@@ -186,7 +183,7 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 		// Strings
 		if (typeof obj === 'string') {
 			// Strings must be quoted and have control characters / lone surrogates escaped.
-			return `"${escapeString(obj, json5Enabled)}"`
+			return `"${escapeString(obj)}"`
 		}
 
 		// BigInts
@@ -330,7 +327,7 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 				if (json5Enabled && json5UnquotedKeyRegExp.test(key)) {
 					possiblyQuotedKey = key
 				} else {
-					possiblyQuotedKey = `"${escapeString(key, json5Enabled)}"`
+					possiblyQuotedKey = `"${escapeString(key)}"`
 				}
 
 				// Add a space after the colon only when indentation is active
@@ -385,29 +382,29 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Escapes a string for inclusion in a JSON/JSON5 string literal.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-function escapeString(str: string, json5Enabled: boolean): string {
+
+// Static lookup table for char codes 0 through 34
+//
+// Char codes 32 (space) and 33 (exclamation mark) are never looked up
+// so don't get any value in the table.
+const escapeCodeLookup: string[] = [
+	'\\u0000', '\\u0001', '\\u0002', '\\u0003', '\\u0004', '\\u0005', '\\u0006', '\\u0007',
+	'\\b', '\\t', '\\n', '\\u000b', '\\f', '\\r', '\\u000e', '\\u000f',
+	'\\u0010', '\\u0011', '\\u0012', '\\u0013', '\\u0014', '\\u0015', '\\u0016', '\\u0017',
+	'\\u0018', '\\u0019', '\\u001a', '\\u001b', '\\u001c', '\\u001d', '\\u001e', '\\u001f',
+	'', '', '\\"'
+]
+
+function escapeString(str: string): string {
 	// Resolves the proper escape sequence for a single matched character code.
 	function getEscapeCode(charCode: number): string {
-		switch (charCode) {
-			case 34: // '"'
-				return '\\"'
-			case 92: // '\\'
-				return '\\\\'
-			case 10: // '\n'
-				return '\\n'
-			case 13: // '\r'
-				return '\\r'
-			case 9:  // '\t'
-				return '\\t'
-			case 8:  // '\b'
-				return '\\b'
-			case 12: // '\f'
-				return '\\f'
-			case 11: // '\v'
-				return json5Enabled ? '\\v' : '\\u000b'
-			default:
-				// Unpaired surrogates and remaining control characters (< 0x20)
-				return `\\u${charCodeTo4HexDigitsLowercase(charCode)}`
+		if (charCode <= 34) {
+			return escapeCodeLookup[charCode]
+		} else if (charCode === 92) { // '\\'
+			return '\\\\'
+		} else {
+			// Handle unpaired surrogates (rare)
+			return `\\u${charCodeTo4HexDigitsLowercase(charCode)}`
 		}
 	}
 
