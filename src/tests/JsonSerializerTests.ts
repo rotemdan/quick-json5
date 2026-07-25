@@ -33,7 +33,7 @@ export function testJsonEncoder() {
 				}
 			},
 
-			bee: [`'😅hey🙃'`, `😅hey🙃`]
+			bee: [`'😅hey \n	🙃'`, `😅hey🙃`]
 		}
 	]
 
