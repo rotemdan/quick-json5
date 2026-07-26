@@ -1,6 +1,6 @@
 {
 	"name": "quick-json5",
-	"version": "0.4.2",
+	"version": "0.4.3",
 	"description": "Fast JSON5 parser and serializer.",
 	"author": "Rotem Dan",
 	"license": "MIT",
