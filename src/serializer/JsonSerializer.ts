@@ -126,12 +126,14 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 		const originalValue = value
 
 		// Call toJSON ONLY if value is Object or BigInt (per spec)
-		if (value != null &&
-			(typeof value === 'object' || typeof value === 'bigint') &&
-			typeof value.toJSON === 'function') {
-			const stringKey = String(key)
+		if (value != null && (typeof value === 'object' || typeof value === 'bigint')) {
+			const toJSON = value.toJSON
 
-			value = value.toJSON(stringKey)
+			if (typeof toJSON === 'function') {
+				const stringKey = String(key)
+
+				value = toJSON(stringKey)
+			}
 		}
 
 		// Apply replacer function if present
@@ -321,9 +323,6 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 
 				let possiblyQuotedKey: string
 
-				const json5UnquotedKeyRegExp =
-					/^[\p{ID_Start}\$_\u200C\u200D](?:[\p{ID_Continue}\$_\u200C\u200D])*$/u
-
 				if (json5Enabled && json5UnquotedKeyRegExp.test(key)) {
 					possiblyQuotedKey = key
 				} else {
@@ -382,19 +381,6 @@ export function stringifyJSON(rootObj: any, replacer?: JsonReplacerType, indentS
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Escapes a string for inclusion in a JSON/JSON5 string literal.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Static lookup table for char codes 0 through 34
-//
-// Char codes 32 (space) and 33 (exclamation mark) are never looked up
-// so don't get any value in the table.
-const escapeCodeLookup: string[] = [
-	'\\u0000', '\\u0001', '\\u0002', '\\u0003', '\\u0004', '\\u0005', '\\u0006', '\\u0007',
-	'\\b', '\\t', '\\n', '\\u000b', '\\f', '\\r', '\\u000e', '\\u000f',
-	'\\u0010', '\\u0011', '\\u0012', '\\u0013', '\\u0014', '\\u0015', '\\u0016', '\\u0017',
-	'\\u0018', '\\u0019', '\\u001a', '\\u001b', '\\u001c', '\\u001d', '\\u001e', '\\u001f',
-	'', '', '\\"'
-]
-
 function escapeString(str: string): string {
 	// Resolves the proper escape sequence for a single matched character code.
 	function getEscapeCode(charCode: number): string {
@@ -408,10 +394,6 @@ function escapeString(str: string): string {
 		}
 	}
 
-	// Matches only characters that require escaping (including unpaired surrogates)
-	const escapedCharPatternsRegExp =
-		/["\\\x00-\x1F]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
-
 	// Apply replace pattern
 	return str.replace(
 		escapedCharPatternsRegExp,
@@ -420,7 +402,32 @@ function escapeString(str: string): string {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Type definitions.
+// Regular Expressions and lookup tables
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Static lookup table for char codes 0 through 34
+//
+// Char codes 32 (space) and 33 (exclamation mark) are never looked up
+// so don't get any value in the table.
+const escapeCodeLookup: string[] = [
+	'\\u0000', '\\u0001', '\\u0002', '\\u0003', '\\u0004', '\\u0005', '\\u0006', '\\u0007',
+	'\\b', '\\t', '\\n', '\\u000b', '\\f', '\\r', '\\u000e', '\\u000f',
+	'\\u0010', '\\u0011', '\\u0012', '\\u0013', '\\u0014', '\\u0015', '\\u0016', '\\u0017',
+	'\\u0018', '\\u0019', '\\u001a', '\\u001b', '\\u001c', '\\u001d', '\\u001e', '\\u001f',
+	'', '', '\\"'
+]
+
+// Regex matching ECMAScript 5.1 §7.6 IdentifierName for unquoted JSON5 keys.
+// IdentifierStart: \p{ID_Start} (UnicodeLetter + _) + explicit $
+// IdentifierPart:  \p{ID_Continue} (IdentifierStart + Mn/Mc/Nd/Pc + ZWNJ/ZWJ) + explicit $
+const json5UnquotedKeyRegExp = /^[\p{ID_Start}\$](?:[\p{ID_Continue}\$])*$/u
+
+// Matches only characters that require escaping (including unpaired surrogates)
+const escapedCharPatternsRegExp =
+	/["\\\x00-\x1F]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Type definitions
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 export interface JsonSerializerOptions {
 	enableJson5?: boolean
