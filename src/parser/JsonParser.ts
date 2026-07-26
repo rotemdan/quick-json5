@@ -81,7 +81,7 @@ export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 						const positionInfo = getInfoForPosition(readPosition - 2)
 						throw new JsonParserError(`Invalid escaped character '${String.fromCharCode(escapedCharCharcode)}' in escape sequence at ${positionInfo.positionString}.`, positionInfo)
 					}
-				} else if (charCode === undefined) {
+				} else if (Number.isNaN(charCode)) {
 					const positionInfo = getInfoForPosition(jsonString.length - 1)
 					throw new JsonParserError(`Unterminated string literal.`, positionInfo)
 				} else if (charCode < 32) {
@@ -297,7 +297,7 @@ export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 				let element = parse(charCode)
 
 				if (reviver !== undefined) {
-					element = applyReviver('', element, elementStartPosition)
+					element = applyReviver('', element, elementStartPosition, arr)
 				}
 
 				arr.push(element)
