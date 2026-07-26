@@ -189,7 +189,7 @@ export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 
 				if (readPosition === exponentDigitsStartPosition) {
 					const positionInfo = getInfoForCurrentReadPosition()
-					throw new JsonParserError(`Invalid character '${String.fromCharCode(charCode)}' at ${positionInfo.positionString}. Exepcted at least one exponent digit.`, positionInfo)
+					throw new JsonParserError(`Invalid character '${String.fromCharCode(charCode)}' at ${positionInfo.positionString}. Expected at least one exponent digit.`, positionInfo)
 				}
 
 				if (isNegativeExponent) {
@@ -297,7 +297,7 @@ export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 				let element = parse(charCode)
 
 				if (reviver !== undefined) {
-					element = applyReviver('', element, elementStartPosition, arr)
+					element = applyReviver(String(arr.length), element, elementStartPosition, arr)
 				}
 
 				arr.push(element)
@@ -475,7 +475,9 @@ export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 		let result = parse(initialCharCode)
 
 		if (reviver !== undefined) {
-			result = applyReviver('', result, documentStartPosition)
+			const rootWrapper = { '': result }
+
+			result = applyReviver('', result, documentStartPosition, rootWrapper)
 		}
 
 		const finalSkipResult = skipWhitespace()

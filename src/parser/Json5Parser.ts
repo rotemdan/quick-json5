@@ -61,12 +61,22 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 							// Skip line continuation with \n character
 						} else if (escapeSequenceCharcode === 13) {
 							// Skip line continuation with \r character or \r\n sequence
-							if (json5String.charCodeAt(readPosition) === 10) {
+							const nextCharCode = json5String.charCodeAt(readPosition)
+
+							if (nextCharCode === 10) {
 								readPosition += 1
 							}
 						} else if (escapeSequenceCharcode === 48) { // '0'
 							decodedString += '\0'
-						} else if (escapeSequenceCharcode >= 49 && escapeSequenceCharcode <= 58) {
+							
+							// Per JSON5 spec: a decimal digit must not follow \0
+							const nextCharCode = json5String.charCodeAt(readPosition)
+
+							if (nextCharCode >= 49 && nextCharCode <= 57) {
+								const positionInfo = getInfoForCurrentReadPosition()
+								throw new JsonParserError(`Found invalid escaped digit character after '\\0' at ${positionInfo.positionString}.`, positionInfo)
+							}
+						} else if (escapeSequenceCharcode >= 49 && escapeSequenceCharcode <= 57) {
 							const positionInfo = getInfoForCurrentReadPosition()
 
 							throw new JsonParserError(`Found invalid escaped digit character at ${positionInfo.positionString}.`, positionInfo)
@@ -132,7 +142,7 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 					} else { // Anything else
 						decodedString += String.fromCharCode(escapeSequenceCharcode)
 					}
-				} else if (charCode === undefined) {
+				} else if (Number.isNaN(charCode)) {
 					throw new JsonParserError(`Unterminated string literal.`, getInfoForPosition(json5String.length - 1))
 				} else {
 					if (charCode === 10 || charCode === 13) {
@@ -547,7 +557,7 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 					// Ensure valid exponent part
 					if (readPosition === exponentDigitsStartPosition) {
 						const positionInfo = getInfoForCurrentReadPosition()
-						throw new JsonParserError(`Exepcted at least one exponent digit at ${positionInfo.positionString}.`, positionInfo)
+						throw new JsonParserError(`Expected at least one exponent digit at ${positionInfo.positionString}.`, positionInfo)
 					}
 
 					if (lastUnderscorePosition >= 0) {
@@ -684,10 +694,10 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 			while (true) {
 				const elementStartPosition = readPosition
 
-				const element = parse(charCode)
+				let element = parse(charCode)
 
 				if (reviver !== undefined) {
-					applyReviver('', element, elementStartPosition)
+					element = applyReviver(String(arr.length), element, elementStartPosition, arr)
 				}
 
 				arr.push(element)
@@ -944,7 +954,9 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 		let result = parse(initialCharCode)
 
 		if (reviver !== undefined) {
-			result = applyReviver('', result, documentStartPosition)
+			const rootWrapper = { '': result }
+
+			result = applyReviver('', result, documentStartPosition, rootWrapper)
 		}
 
 		const finalSkipResult = skipWhitespaceAndComments()
