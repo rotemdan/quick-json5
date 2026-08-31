@@ -41,6 +41,26 @@ export const positivePowersOf10 = new Float64Array([
 	1e+20, 1e+21, 1e+22
 ])
 
+// Returns the offset of the first character in [offset, offset + count) that is not a
+// valid hexadecimal ('0'-'9', 'A'-'F', 'a'-'f'), or -1 if all characters are valid.
+// Characters past the end of the text (NaN char codes) are considered invalid.
+export function findInvalidHexCharCodeOffset(text: string, offset: number, count: number): number {
+	for (let i = 0; i < count; i++) {
+		const charCode = text.charCodeAt(offset + i)
+
+		const isValidHexChar =
+			(charCode >= 48 && charCode <= 57) || // '0'..'9'
+			(charCode >= 65 && charCode <= 70) || // 'A'..'F'
+			(charCode >= 97 && charCode <= 102) // 'a'..'f'
+
+		if (!isValidHexChar) {
+			return offset + i
+		}
+	}
+
+	return -1
+}
+
 // Converts a character offset in a string to a (line number, column) pair.
 //
 // Line and column numbers are 1-based.

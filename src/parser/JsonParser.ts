@@ -1,5 +1,5 @@
-import { JsonParserError } from '../utilities/JsonParserError.js'
-import { getTextPositionInfo, hexCharCodeToNumber, positivePowersOf10 } from '../utilities/Utilities.js'
+import { JsonParserError } from './JsonParserError.js'
+import { findInvalidHexCharCodeOffset, getTextPositionInfo, hexCharCodeToNumber, positivePowersOf10 } from '../utilities/Utilities.js'
 
 export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 	if (typeof jsonString !== 'string') {
@@ -64,13 +64,20 @@ export function parseJSON(jsonString: string, reviver?: JsonReviverFunction) {
 							throw new JsonParserError(`Unterminated hexadecimal sequence. Expected 4 hexadecimal characters at ${positionInfo.positionString}.`, positionInfo)
 						}
 
-						const codePoint =
-							hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 0)) << 12 |
-							hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 1)) << 8 |
-							hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 2)) << 4 |
-							hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 3))
+						try {
+							const codePoint =
+								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 0)) << 12 |
+								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 1)) << 8 |
+								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 2)) << 4 |
+								hexCharCodeToNumber(jsonString.charCodeAt(readPosition + 3))
 
-						decodedString += String.fromCharCode(codePoint)
+							decodedString += String.fromCharCode(codePoint)
+						} catch {
+							const invalidCharOffset = findInvalidHexCharCodeOffset(jsonString, readPosition, 4)
+							const positionInfo = getInfoForPosition(invalidCharOffset >= 0 ? invalidCharOffset : readPosition)
+
+							throw new JsonParserError(`Invalid character in hexadecimal sequence at ${positionInfo.positionString}.`, positionInfo)
+						}
 
 						readPosition += 4
 					} else if (escapedCharCharcode === 102) { // 'f'

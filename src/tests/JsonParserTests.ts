@@ -81,7 +81,7 @@ const testPairs: [string, unknown][] = [
 	['1.0e+2', 1.0e2], // positive exponent with plus sign
 	['1.2345678901234567', 1.2345678901234567], // double precision limit
 	['18446744073709551616', 18446744073709552000], // Number larger than MAX_SAFE_INTEGER - might lose precision
-	['-18446744073709551616', -18446744073709552000], // Negative number larger than MAX_SAFE_INTEGER
+	['-18446744073709551616', -18446744073709552000], // Negative number smaller than MIN_SAFE_INTEGER
 
 	// === Booleans and null ===
 	['true', true], // boolean true

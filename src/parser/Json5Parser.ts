@@ -1,5 +1,5 @@
-import { JsonParserError } from '../utilities/JsonParserError.js'
-import { getTextPositionInfo, hexCharCodeToNumber, positivePowersOf10 } from '../utilities/Utilities.js'
+import { JsonParserError } from './JsonParserError.js'
+import { findInvalidHexCharCodeOffset, getTextPositionInfo, hexCharCodeToNumber, positivePowersOf10 } from '../utilities/Utilities.js'
 import { type JsonReviverFunction } from './JsonParser.js'
 
 export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, options?: Json5ParserOptions) {
@@ -68,11 +68,11 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 							}
 						} else if (escapeSequenceCharcode === 48) { // '0'
 							decodedString += '\0'
-							
+
 							// Per JSON5 spec: a decimal digit must not follow \0
 							const nextCharCode = json5String.charCodeAt(readPosition)
 
-							if (nextCharCode >= 49 && nextCharCode <= 57) {
+							if (nextCharCode >= 48 && nextCharCode <= 57) {
 								const positionInfo = getInfoForCurrentReadPosition()
 								throw new JsonParserError(`Found invalid escaped digit character after '\\0' at ${positionInfo.positionString}.`, positionInfo)
 							}
@@ -105,7 +105,8 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 
 							decodedString += String.fromCharCode(codePoint)
 						} catch {
-							const positionInfo = getInfoForPosition(json5String.length - 1)
+							const invalidCharOffset = findInvalidHexCharCodeOffset(json5String, readPosition, 4)
+							const positionInfo = getInfoForPosition(invalidCharOffset >= 0 ? invalidCharOffset : readPosition)
 
 							throw new JsonParserError(`Invalid character in hexadecimal sequence at ${positionInfo.positionString}.`, positionInfo)
 						}
@@ -124,7 +125,9 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 
 							decodedString += String.fromCharCode(codePoint)
 						} catch {
-							const positionInfo = getInfoForCurrentReadPosition()
+							const invalidCharOffset = findInvalidHexCharCodeOffset(json5String, readPosition, 2)
+							const positionInfo = getInfoForPosition(invalidCharOffset >= 0 ? invalidCharOffset : readPosition)
+
 							throw new JsonParserError(`Invalid character in hexadecimal sequence at ${positionInfo.positionString}.`, positionInfo)
 						}
 
@@ -283,6 +286,13 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 						}
 					}
 
+					// The accumulated value may have lost precision once it exceeded 2^53
+					// (each accumulation step rounds). Fall back to an exact string-to-number
+					// conversion in that case.
+					if (parsedHexValue >= 2 ** 53) {
+						parsedHexValue = Number('0x' + json5String.substring(hexDigitsStartPosition, readPosition).replaceAll('_', ''))
+					}
+
 					if (isNegative) {
 						return -parsedHexValue
 					} else {
@@ -329,6 +339,13 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 					if (json5String[octalDigitsStartPosition] === '_' || json5String[readPosition - 1] === '_') {
 						const positionInfo = getInfoForPosition(octalDigitsStartPosition)
 						throw new JsonParserError(`Octal literal at ${positionInfo.positionString} contains an invalid preceding or trailing underscore.`, positionInfo)
+					}
+
+					// The accumulated value may have lost precision once it exceeded 2^53
+					// (each accumulation step rounds). Fall back to an exact string-to-number
+					// conversion in that case.
+					if (parsedOctalValue >= 2 ** 53) {
+						parsedOctalValue = Number('0o' + json5String.substring(octalDigitsStartPosition, readPosition).replaceAll('_', ''))
 					}
 
 					if (isNegative) {
@@ -379,6 +396,13 @@ export function parseJSON5(json5String: string, reviver?: JsonReviverFunction, o
 					if (json5String[binaryDigitsStartPosition] === '_' || json5String[readPosition - 1] === '_') {
 						const positionInfo = getInfoForPosition(binaryDigitsStartPosition)
 						throw new JsonParserError(`Binary literal at ${positionInfo.positionString} contains an invalid preceding or trailing underscore.`, positionInfo)
+					}
+
+					// The accumulated value may have lost precision once it exceeded 2^53
+					// (each accumulation step rounds). Fall back to an exact string-to-number
+					// conversion in that case.
+					if (parsedBinaryValue >= 2 ** 53) {
+						parsedBinaryValue = Number('0b' + json5String.substring(binaryDigitsStartPosition, readPosition).replaceAll('_', ''))
 					}
 
 					if (isNegative) {
