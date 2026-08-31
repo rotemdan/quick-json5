@@ -1,6 +1,6 @@
 {
 	"name": "quick-json5",
-	"version": "0.4.3",
+	"version": "0.5.0",
 	"description": "Fast JSON5 parser and serializer.",
 	"author": "Rotem Dan",
 	"license": "MIT",
@@ -29,10 +29,11 @@
 		"README.md"
 	],
 	"scripts": {
-		"test": "node dist/tests/Test.js"
+		"test": "vitest",
+		"test-manual": "node dist/tests/Test.js"
 	},
-	"dependencies": {},
 	"devDependencies": {
-		"@types/node": "~26.1.1"
+		"@types/node": "~26.4.0",
+		"vitest": "~4.1.11"
 	}
 }
